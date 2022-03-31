@@ -1,0 +1,8 @@
+{
+  "id": "chartmaker",
+  "description": "",
+  "module": "index.js",
+  "single": 1,
+  "nochannels": 1
+}
+
