@@ -4,11 +4,11 @@
 
 const util = require('util');
 const fs = require('fs');
-// const path = require('path');
 
 // const hut = require('./lib/hut');
 // const scriptapi = require('./lib/scriptapi');
 const trends = require('./lib/trends');
+const rollup = require('./lib/rollup');
 
 module.exports = async function(plugin) {
   const { agentName, agentPath, customFolder, ...opt } = plugin.params.data;
@@ -27,14 +27,10 @@ module.exports = async function(plugin) {
 
   let client;
   try {
-    console.log('Try client');
     const Client = require(sqlclientFilename);
     client = new Client(opt);
-
-    console.log('client OK ');
     await client.connect();
     plugin.log('Connected to ' + agentName);
-    console.log('Connected to ' + agentName);
   } catch (e) {
     console.log('Connection error: ' + util.inspect(e));
   }
@@ -43,59 +39,37 @@ module.exports = async function(plugin) {
 
   async function reportRequest(mes) {
     const respObj = { id: mes.id, type: 'command' };
-    console.log('reportRequest mes='+util.inspect(mes))
+    console.log('reportRequest mes=' + util.inspect(mes));
     try {
       let res = {};
 
       if (mes.usescript) {
         // Запустить пользовательский обработчик
-        // const filename = mes.uhandler;
-        // if (!filename || !fs.existsSync(filename)) throw { message: 'Script file not found: ' + filename };
+        const filename = mes.uhandler;
+        if (!filename || !fs.existsSync(filename)) throw { message: 'Script file not found: ' + filename };
 
-        let ts = Date.now();
-        const oneH = 3600 * 1000;
-
-        // hut.unrequire(filename);
+        unrequire(filename);
         try {
-          // res = await require(filename)(mes.reportVars, mes.devices, client, mes.filter, scriptapi);
-          res = {
-            items: [
-              {
-                id: 'VMETER001.value',
-                points: [
-                  { x: ts - oneH * 2, y: 10 },
-                  { x: ts - oneH, y: 20 },
-                  { x: ts, y: 30 }
-                ],
-                legend: 'Счетчик 1',
-                dn_prop: 'VMETER002.value',
-                fillColor: 'rgba(248,231,28,0.28)'
-              },
-              {
-                id: 'VMETER002.value',
-                points: [
-                  { x: ts - oneH * 2, y: 15 },
-                  { x: ts - oneH, y: 25 },
-                  { x: ts, y: 35 }
-                ],
-                legend: 'Счетчик 2',
-                dn_prop: 'VMETER002.value',
-
-                fillColor: 'rgba(216,38,38,1)'
-              }
-            ],
-            start: ts - oneH * 3,
-            end: ts,
-            min: 0,
-            max: 50,
-            unit: 'hour'
-          };
+          res = await require(filename)();
         } catch (e) {
           plugin.log('Script error: ' + util.inspect(e));
           throw { message: 'Script error: ' + util.inspect(e) };
         }
       } else {
         res = await getRes(mes);
+
+        // добавить форматы временных меток - пользователь мог поменять!!
+        res.formats = {
+          millisecond: 'HH:mm:ss.mmm',
+          second: 'HH:mm:ss',
+          minute: 'HH:mm',
+          hour: 'HH:mm',
+          day: 'MMM d',
+          week: 'PP',
+          month: 'MMM yyyy',
+          quarter: 'qqq - yyyy',
+          year: 'yyyy'
+        };
       }
 
       respObj.payload = res;
@@ -106,8 +80,6 @@ module.exports = async function(plugin) {
       respObj.response = 0;
     }
     plugin.log('SEND RESPONSE ' + util.inspect(respObj));
-    console.log('SEND RESPONSE ' + util.inspect(respObj));
-
     plugin.send(respObj);
   }
 
@@ -118,29 +90,26 @@ module.exports = async function(plugin) {
 
     const sqlStr = client.prepareQuery(query);
     plugin.log('SQL: ' + sqlStr);
-    console.log('SQL: ' + sqlStr);
 
     // Выполнить запрос
     let arr = [];
-    if (sqlStr) {
-      arr = await client.query(sqlStr);
-    }
+    if (sqlStr) arr = await client.query(sqlStr);
 
-    if (arr.length > 0) {
-      plugin.log('SQL result len= ' + arr.length + ' First record: ' + util.inspect(arr[0]));
-      console.log('SQL result len= ' + arr.length + ' First record: ' + util.inspect(arr[0]));
-    } else {
-      plugin.log('SQL result len=0');
-      console.log('SQL result len=0');
-    }
-
-    // результат преобразовать 
-    const dnarr = query.dn_prop.split(',');
-    return trends.getResObject(arr, dnarr, mes);
+    // результат преобразовать
+    return mes.process_type == 'afun' ? rollup(arr, mes) : trends(arr, mes);
   }
-
-  
 };
+
+function unrequire(moduleName) {
+  if (!moduleName) return;
+  try {
+    const fullPath = require.resolve(moduleName);
+    delete require.cache[fullPath];
+  } catch (e) {
+    // Может и не быть
+  }
+}
+
 /**
  * mes={
   start: 1648587600000,
