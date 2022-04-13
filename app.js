@@ -61,6 +61,7 @@ module.exports = async function(plugin) {
         // добавить форматы временных меток - пользователь мог поменять!!
       }
       if (!res.formats) res.formats = mes.formats || {};
+      if (mes.now) res.now = mes.now;
 
       respObj.payload = res;
       respObj.response = 1;
