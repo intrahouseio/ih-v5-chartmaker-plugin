@@ -59,18 +59,8 @@ module.exports = async function(plugin) {
         res = await getRes(mes);
 
         // добавить форматы временных меток - пользователь мог поменять!!
-        res.formats = {
-          millisecond: 'HH:mm:ss.mmm',
-          second: 'HH:mm:ss',
-          minute: 'HH:mm',
-          hour: 'HH:mm',
-          day: 'MMM d',
-          week: 'PP',
-          month: 'MMM yyyy',
-          quarter: 'qqq - yyyy',
-          year: 'yyyy'
-        };
       }
+      if (!res.formats) res.formats = mes.formats || {};
 
       respObj.payload = res;
       respObj.response = 1;
