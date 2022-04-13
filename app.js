@@ -11,18 +11,15 @@ const trends = require('./lib/trends');
 const rollup = require('./lib/rollup');
 
 module.exports = async function(plugin) {
-  const { agentName, agentPath, customFolder, ...opt } = plugin.params.data;
-  console.log('Start chartmaker ');
+  const { agentName, agentPath, customFolder, useIds, ...opt } = plugin.params.data;
 
   // Путь к пользовательским таблицам
   // scriptapi.customFolder = customFolder;
 
   // Подключиться к БД
   const sqlclientFilename = agentPath + '/lib/sqlclient.js';
-  console.log('Try chartmaker ' + sqlclientFilename);
   if (!fs.existsSync(sqlclientFilename)) {
-    console.log('File not found ' + sqlclientFilename);
-    // throw { message: 'File not found: ' + sqlclientFilename };
+    throw { message: 'File not found: ' + sqlclientFilename };
   }
 
   let client;
@@ -32,14 +29,14 @@ module.exports = async function(plugin) {
     await client.connect();
     plugin.log('Connected to ' + agentName);
   } catch (e) {
-    console.log('Connection error: ' + util.inspect(e));
+    throw { message: 'Connection error: ' + util.inspect(e) };
   }
 
-  plugin.onCommand(async mes => reportRequest(mes));
+  plugin.onCommand(async mes => process(mes));
 
-  async function reportRequest(mes) {
+  async function process(mes) {
     const respObj = { id: mes.id, type: 'command' };
-    console.log('reportRequest mes=' + util.inspect(mes));
+    // console.log('Request Message: ' + util.inspect(mes));
     try {
       let res = {};
 
@@ -79,15 +76,51 @@ module.exports = async function(plugin) {
     const query = mes.sql || { ...mes.filter };
     if (query.end2) query.end = query.end2;
 
-    const sqlStr = client.prepareQuery(query);
+    const sqlStr = client.prepareQuery(query, useIds); // Эта функция должна сформировать запрос с учетом ids
     plugin.log('SQL: ' + sqlStr);
 
     // Выполнить запрос
     let arr = [];
-    if (sqlStr) arr = await client.query(sqlStr);
+    if (sqlStr) {
+      arr = await client.query(sqlStr);
+      // console.log('Records: ' + util.inspect(arr));
+
+      // Выполнить обратный маппинг id => dn, prop
+      if (useIds) {
+        arr = remap(arr, query);
+        // console.log('Records after remap: ' + util.inspect(arr));
+      }
+    }
 
     // результат преобразовать
     return mes.process_type == 'afun' ? rollup(arr, mes) : trends(arr, mes);
+  }
+
+  function remap(arr, query) {
+    if (!query.ids || !query.dn_prop) return arr;
+
+    const idArr = query.ids.split(',');
+    const dnArr = query.dn_prop.split(',');
+    if (idArr.length != dnArr.length) return arr;
+
+    const idMap = {};
+    try {
+      for (let i = 0; i < idArr.length; i++) {
+        const intId = Number(idArr[i]);
+        const [dn, prop] = dnArr[i].split('.');
+        idMap[intId] = { dn, prop };
+      }
+      arr.forEach(item => {
+        if (item.id && idMap[item.id]) {
+          Object.assign(item, idMap[item.id]);
+        }
+      });
+    } catch (e) {
+      plugin.log(
+        'Remap error for query.ids=' + query.ids + ' query.dn_prop=' + query.dn_prop + ' : ' + util.inspect(e)
+      );
+    }
+    return arr;
   }
 };
 

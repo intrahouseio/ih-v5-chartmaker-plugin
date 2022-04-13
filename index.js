@@ -5,24 +5,22 @@ const app = require('./app');
 
 console.log('Chartmaker plugin has started.');
 
-
 (async () => {
-  console.log('Chartmaker plugin has started.');
+  // console.log('Chartmaker plugin has started.');
   plugin.log('Chartmaker plugin has started.', 0);
   try {
     // if (!plugin.params.agentPath) throw { message: 'No agentPath!' };
     plugin.params.data = await plugin.params.get();
- 
-    plugin.log('Received params ' + JSON.stringify(plugin.params.data));
+
+    // console.log('Received params ' + JSON.stringify(plugin.params.data));
     // if (!plugin.params.agentPath) throw { message: 'No agentPath!' };
-    
+
     app(plugin);
   } catch (e) {
     console.log('ERROR: ' + util.inspect(e));
     plugin.log('ERROR: ' + util.inspect(e));
-    // setTimeout(() => {
-    //  plugin.exit(1)},
-    // 1000);
+    setTimeout(() => {
+      plugin.exit(1);
+    }, 1000);
   }
 })();
-
