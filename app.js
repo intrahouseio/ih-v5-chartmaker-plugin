@@ -75,6 +75,7 @@ module.exports = async function(plugin) {
     // Подготовить запрос или запрос уже готов
     const query = mes.sql || { ...mes.filter };
     if (query.end2) query.end = query.end2;
+    query.ids = mes.ids;
 
     const sqlStr = client.prepareQuery(query, useIds); // Эта функция должна сформировать запрос с учетом ids
     plugin.log('SQL: ' + sqlStr);
