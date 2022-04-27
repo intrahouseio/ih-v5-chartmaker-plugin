@@ -9,6 +9,8 @@ const fs = require('fs');
 // const scriptapi = require('./lib/scriptapi');
 const trends = require('./lib/trends');
 const rollup = require('./lib/rollup');
+const piedata = require('./lib/piedata');
+
 
 module.exports = async function(plugin) {
   const { agentName, agentPath, customFolder, useIds, ...opt } = plugin.params.data;
@@ -94,7 +96,12 @@ module.exports = async function(plugin) {
     }
 
     // результат преобразовать
-    return mes.process_type == 'afun' ? rollup(arr, mes) : trends(arr, mes);
+    // return mes.process_type == 'afun' ? rollup(arr, mes) : trends(arr, mes);
+    // chart_type
+    if (mes.process_type == 'afun') return rollup(arr, mes);
+    if (mes.chart_type == 'chartpie') return piedata(arr, mes);
+    return trends(arr, mes);
+
   }
 
   function remap(arr, query) {

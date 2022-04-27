@@ -1,8 +1,8 @@
 {
-    "id":"chartmaker",
-    "description":"Plugin for chart data generation",
-    "activation": false,
-    "resources": false,
-    "cross": true,
-    "version":"5.0.4"
+  "id": "chartmaker",
+  "description": "Plugin for chart data generation",
+  "activation": false,
+  "resources": false,
+  "cross": true,
+  "version": "5.0.5"
 }
