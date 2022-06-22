@@ -49,7 +49,7 @@ module.exports = async function(plugin) {
 
         unrequire(filename);
         try {
-          res = await require(filename)();
+          res = await require(filename)(mes);
         } catch (e) {
           plugin.log('Script error: ' + util.inspect(e));
           throw { message: 'Script error: ' + util.inspect(e) };
