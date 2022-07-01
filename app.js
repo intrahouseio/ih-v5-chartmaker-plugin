@@ -8,7 +8,7 @@ const fs = require('fs');
 // const hut = require('./lib/hut');
 // const scriptapi = require('./lib/scriptapi');
 const trends = require('./lib/trends');
-const rollup = require('./lib/rollup');
+const rollup = require('./lib/rollup2');
 const piedata = require('./lib/piedata');
 
 
@@ -49,7 +49,8 @@ module.exports = async function(plugin) {
 
         unrequire(filename);
         try {
-          res = await require(filename)(mes);
+          // console.log('RUN '+filename+' mes='+util.inspect(mes))
+          res = await require(filename)(mes, client);
         } catch (e) {
           plugin.log('Script error: ' + util.inspect(e));
           throw { message: 'Script error: ' + util.inspect(e) };
@@ -78,7 +79,6 @@ module.exports = async function(plugin) {
     const query = mes.sql || { ...mes.filter };
     if (query.end2) query.end = query.end2;
     query.ids = mes.ids;
-
     const sqlStr = client.prepareQuery(query, useIds); // Эта функция должна сформировать запрос с учетом ids
     plugin.log('SQL: ' + sqlStr);
 
@@ -86,19 +86,19 @@ module.exports = async function(plugin) {
     let arr = [];
     if (sqlStr) {
       arr = await client.query(sqlStr);
-      // console.log('Records: ' + util.inspect(arr));
-
+    
       // Выполнить обратный маппинг id => dn, prop
       if (useIds) {
         arr = remap(arr, query);
-        // console.log('Records after remap: ' + util.inspect(arr));
       }
     }
 
     // результат преобразовать
     // return mes.process_type == 'afun' ? rollup(arr, mes) : trends(arr, mes);
     // chart_type
-    if (mes.process_type == 'afun') return rollup(arr, mes);
+    if (mes.process_type == 'afun') {
+      return rollup(arr, mes);
+    }
     if (mes.chart_type == 'chartpie') return piedata(arr, mes);
     return trends(arr, mes);
 
