@@ -13,7 +13,9 @@ const piedata = require('./lib/piedata');
 
 
 module.exports = async function(plugin) {
-  const { agentName, agentPath, customFolder, useIds, ...opt } = plugin.params.data;
+  const { agentName, agentPath, customFolder, jbaseFolder, useIds, ...opt } = plugin.params.data;
+  plugin.childdatamanager.start({customFolder, jbaseFolder, useIds});
+
 
   // Путь к пользовательским таблицам
   // scriptapi.customFolder = customFolder;
@@ -50,7 +52,7 @@ module.exports = async function(plugin) {
         unrequire(filename);
         try {
           // console.log('RUN '+filename+' mes='+util.inspect(mes))
-          res = await require(filename)(mes, client);
+          res = await require(filename)(mes, client, plugin.childdatamanager);
         } catch (e) {
           plugin.log('Script error: ' + util.inspect(e));
           throw { message: 'Script error: ' + util.inspect(e) };
