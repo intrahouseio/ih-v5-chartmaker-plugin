@@ -40,6 +40,7 @@ module.exports = async function(plugin) {
 
   async function process(mes) {
     const respObj = { id: mes.id, type: 'command' };
+    const uuid = mes.debug_uuid;
     // console.log('Request Message: ' + util.inspect(mes));
     try {
       let res = {};
@@ -48,13 +49,21 @@ module.exports = async function(plugin) {
         // Запустить пользовательский обработчик
         const filename = mes.uhandler;
         if (!filename || !fs.existsSync(filename)) throw { message: 'Script file not found: ' + filename };
-
+        
         unrequire(filename);
+        let txt = '';
         try {
           // console.log('RUN '+filename+' mes='+util.inspect(mes))
-          res = await require(filename)(mes, client, plugin.childdatamanager);
+          txt = 'Start\n filter =  '+util.inspect(mes.filter)+'\n local=  '+util.inspect(mes.local);
+          debug(txt);
+          res = await require(filename)(mes, client, plugin.childdatamanager, debug);
+          txt = 'Stop\n result =  '+util.inspect(res)
+          debug(txt);
         } catch (e) {
-          plugin.log('Script error: ' + util.inspect(e));
+          
+          txt = 'Script error: ' + util.inspect(e);
+          plugin.log(txt);
+          debug(txt);
           throw { message: 'Script error: ' + util.inspect(e) };
         }
       } else {
@@ -74,6 +83,11 @@ module.exports = async function(plugin) {
     }
     plugin.log('SEND RESPONSE ' + util.inspect(respObj));
     plugin.send(respObj);
+
+    function debug(msg) {
+      if (typeof msg == 'object') msg = util.inspect(msg, null, 4);
+      plugin.send({type:'debug', txt: msg, uuid})
+    }
   }
 
   async function getRes(mes) {
