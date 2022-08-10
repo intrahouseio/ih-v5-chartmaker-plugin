@@ -112,9 +112,7 @@ module.exports = async function(plugin) {
     // результат преобразовать
     // return mes.process_type == 'afun' ? rollup(arr, mes) : trends(arr, mes);
     // chart_type
-    if (mes.process_type == 'afun') {
-      return rollup(arr, mes);
-    }
+    if (mes.process_type == 'afun') return rollup(arr, mes);
     if (mes.chart_type == 'chartpie') return piedata(arr, mes);
     return trends(arr, mes);
 
