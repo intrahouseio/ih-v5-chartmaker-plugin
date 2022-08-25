@@ -5,17 +5,13 @@
 const util = require('util');
 const fs = require('fs');
 
-// const hut = require('./lib/hut');
-// const scriptapi = require('./lib/scriptapi');
 const trends = require('./lib/trends');
 const rollup = require('./lib/rollup2');
 const piedata = require('./lib/piedata');
 
-
 module.exports = async function(plugin) {
   const { agentName, agentPath, customFolder, jbaseFolder, useIds, ...opt } = plugin.params.data;
-  plugin.childdatamanager.start({customFolder, jbaseFolder, useIds});
-
+  plugin.apimanager.start(plugin, { customFolder, jbaseFolder, useIds });
 
   // Путь к пользовательским таблицам
   // scriptapi.customFolder = customFolder;
@@ -49,18 +45,16 @@ module.exports = async function(plugin) {
         // Запустить пользовательский обработчик
         const filename = mes.uhandler;
         if (!filename || !fs.existsSync(filename)) throw { message: 'Script file not found: ' + filename };
-        
+
         unrequire(filename);
         let txt = '';
         try {
-          // console.log('RUN '+filename+' mes='+util.inspect(mes))
-          txt = 'Start\n filter =  '+util.inspect(mes.filter)+'\n local=  '+util.inspect(mes.local);
+          txt = 'Start\n filter =  ' + util.inspect(mes.filter) + '\n local=  ' + util.inspect(mes.local);
           debug(txt);
-          res = await require(filename)(mes, client, plugin.childdatamanager, debug);
-          txt = 'Stop\n result =  '+util.inspect(res)
+          res = await require(filename)(mes, client, plugin.apimanager, debug);
+          txt = 'Stop\n result =  ' + util.inspect(res);
           debug(txt);
         } catch (e) {
-          
           txt = 'Script error: ' + util.inspect(e);
           plugin.log(txt);
           debug(txt);
@@ -86,7 +80,7 @@ module.exports = async function(plugin) {
 
     function debug(msg) {
       if (typeof msg == 'object') msg = util.inspect(msg, null, 4);
-      plugin.send({type:'debug', txt: msg, uuid})
+      plugin.send({ type: 'debug', txt: msg, uuid });
     }
   }
 
@@ -102,7 +96,7 @@ module.exports = async function(plugin) {
     let arr = [];
     if (sqlStr) {
       arr = await client.query(sqlStr);
-    
+
       // Выполнить обратный маппинг id => dn, prop
       if (useIds) {
         arr = remap(arr, query);
@@ -115,7 +109,6 @@ module.exports = async function(plugin) {
     if (mes.process_type == 'afun') return rollup(arr, mes);
     if (mes.chart_type == 'chartpie') return piedata(arr, mes);
     return trends(arr, mes);
-
   }
 
   function remap(arr, query) {
