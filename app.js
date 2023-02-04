@@ -2,6 +2,15 @@
  * app.js
  */
 
+// https://github.com/nodejs/help/issues/1518
+// Node.js process rss keeps rising when heapUsed/heapTotal does not (native memory leak)
+// =>
+// On Ubuntu 18.04 LTS, these commands install and configure jemalloc to be used:
+// sudo apt-get install libjemalloc-dev
+// sudo -i
+// echo "/usr/lib/x86_64-linux-gnu/libjemalloc.so" >> /etc/ld.so.preload
+// Иначе при большом количестве точек (1 млн?) идет утечка rss!!!
+
 const util = require('util');
 const fs = require('fs');
 
@@ -32,10 +41,10 @@ module.exports = async function(plugin) {
     throw { message: 'Connection error: ' + util.inspect(e) };
   }
 
-  plugin.onCommand(async mes => process(mes));
+  plugin.onCommand(async mes => processCommand(mes));
 
-  async function process(mes) {
-    const respObj = { id: mes.id, type: 'command' };
+  async function processCommand(mes) {
+    let respObj = { id: mes.id, type: 'command' };
     const uuid = mes.debug_uuid;
     // console.log('Request Message: ' + util.inspect(mes));
     try {
@@ -62,8 +71,6 @@ module.exports = async function(plugin) {
         }
       } else {
         res = await getRes(mes);
-
-        // добавить форматы временных меток - пользователь мог поменять!!
       }
       if (!res.formats) res.formats = mes.formats || {};
       if (mes.now) res.now = mes.now;
@@ -75,8 +82,9 @@ module.exports = async function(plugin) {
       respObj.error = e;
       respObj.response = 0;
     }
-    plugin.log('SEND RESPONSE ' + util.inspect(respObj));
+    plugin.log('SEND RESPONSE ');
     plugin.send(respObj);
+    respObj = '';
 
     function debug(msg) {
       if (typeof msg == 'object') msg = util.inspect(msg, null, 4);
@@ -103,12 +111,61 @@ module.exports = async function(plugin) {
       }
     }
 
+    plugin.log('Points: ' + arr.length);
+
     // результат преобразовать
     // return mes.process_type == 'afun' ? rollup(arr, mes) : trends(arr, mes);
     // chart_type
     if (mes.process_type == 'afun') return rollup(arr, mes);
     if (mes.chart_type == 'chartpie') return piedata(arr, mes);
     return trends(arr, mes);
+  }
+
+  async function getRes2(mes) {
+    if (mes.sql) return getRes(mes);
+    let memUsage = process.memoryUsage();
+    plugin.log('getRes2 started memUsage = ' + util.inspect(memUsage));
+
+    let { start, end, end2, dn_prop } = mes.filter;
+    if (end2) end = end2;
+    const delta = Math.round((end - start) / 50);
+
+    const sqlStrArr = [];
+    let cur = start;
+    for (let i = 0; i < 50; i++) {
+      sqlStrArr[i] = client.prepareQuery({ dn_prop, start: cur, end: cur + delta - 1 });
+      plugin.log('SQL: ' + sqlStrArr[i]);
+      cur += delta;
+    }
+
+    const promises = sqlStrArr.map((sqlStr, idx) => queryOne(sqlStr, idx));
+    const results = await Promise.all(promises);
+    memUsage = process.memoryUsage();
+    plugin.log('results.len ' + results.length + ' memUsage = ' + util.inspect(memUsage));
+
+    let arr = [];
+    let i = 0;
+    // for (let i=0; i<results.length; i++) {
+    for (let j = 0; j < results[i].length; j++) {
+      arr.push(results[i][j]);
+    }
+    // }
+    plugin.log('Total arr.len ' + arr.length);
+    // результат преобразовать
+    // return mes.process_type == 'afun' ? rollup(arr, mes) : trends(arr, mes);
+    // chart_type
+    if (mes.process_type == 'afun') return rollup(arr, mes);
+    if (mes.chart_type == 'chartpie') return piedata(arr, mes);
+    const farr = trends(arr, mes);
+    memUsage = process.memoryUsage();
+    plugin.log('farr.len ' + farr.length + ' memUsage = ' + util.inspect(memUsage));
+    return farr;
+  }
+
+  async function queryOne(qstr, idx) {
+    const xres = await client.query(qstr);
+    plugin.log(idx + ' queryOne LEN=' + xres.length);
+    return idx ? [] : xres;
   }
 
   function remap(arr, query) {
