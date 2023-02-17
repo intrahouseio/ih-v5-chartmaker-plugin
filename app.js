@@ -2,15 +2,6 @@
  * app.js
  */
 
-// https://github.com/nodejs/help/issues/1518
-// Node.js process rss keeps rising when heapUsed/heapTotal does not (native memory leak)
-// =>
-// On Ubuntu 18.04 LTS, these commands install and configure jemalloc to be used:
-// sudo apt-get install libjemalloc-dev
-// sudo -i
-// echo "/usr/lib/x86_64-linux-gnu/libjemalloc.so" >> /etc/ld.so.preload
-// Иначе при большом количестве точек (1 млн?) идет утечка rss!!!
-
 const util = require('util');
 const fs = require('fs');
 
@@ -58,7 +49,8 @@ module.exports = async function(plugin) {
         unrequire(filename);
         let txt = '';
         try {
-          txt = 'Start\n filter =  ' + util.inspect(mes.filter) + '\n local=  ' + util.inspect(mes.local);
+          // txt = 'Start\n filter =  ' + util.inspect(mes.filter) + '\n local=  ' + util.inspect(mes.local);
+          txt = 'Start';
           debug(txt);
           res = await require(filename)(mes, client, plugin.apimanager, debug);
           txt = 'Stop\n result =  ' + util.inspect(res);
@@ -82,7 +74,7 @@ module.exports = async function(plugin) {
       respObj.error = e;
       respObj.response = 0;
     }
-    plugin.log('SEND RESPONSE ');
+    plugin.log('SEND RESPONSE ' + util.inspect(respObj), 1);
     plugin.send(respObj);
     respObj = '';
 
