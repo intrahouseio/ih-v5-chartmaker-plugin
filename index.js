@@ -10,7 +10,7 @@ console.log('Chartmaker plugin has started.');
   try {
     const opt = getOptFromArgs();
     const pluginapi = opt && opt.pluginapi ? opt.pluginapi : 'ih-plugin-api';
-    console.log('pluginapi = '+pluginapi)
+
     plugin = require(pluginapi)();
     // console.log('Chartmaker plugin has started.');
     plugin.log('Chartmaker plugin has started.', 0);

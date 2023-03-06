@@ -32,7 +32,7 @@ class Sqlclient {
       queryStr = utils.getQueryStr(queryObj, dnarr);
     }
 
-    console.log('SQLClient Query: ' + queryStr);
+    // console.log('SQLClient Query: ' + queryStr);
     return queryStr;
   }
 
