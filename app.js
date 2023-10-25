@@ -65,6 +65,7 @@ module.exports = async function(plugin) {
         res = await getRes(mes);
       }
       if (!res.formats) res.formats = mes.formats || {};
+      if (mes.scales) res.scales = mes.scales;
       if (mes.now) res.now = mes.now;
 
       respObj.payload = res;
