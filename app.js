@@ -63,6 +63,10 @@ module.exports = async function(plugin) {
         }
       } else {
         res = await getRes(mes);
+        if (mes.chart_type == 'chartcolumns') {
+          res.stacked = mes.stacked || 0;
+          res.autoskip = mes.autoskip || 0;
+        }
       }
       if (!res.formats) res.formats = mes.formats || {};
       if (mes.scales) res.scales = mes.scales;
