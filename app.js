@@ -96,7 +96,7 @@ module.exports = async function(plugin) {
       if (query.end2) query.end = query.end2;
       query.ids = mes.ids;
       if (mes.process_type == 'afun' || mes.chart_type == 'chartpie') {
-        query.notnul = true; // Может также быть для неагрегированного (линейного) - если без разрывов
+        query.notnull = true; // Может также быть для неагрегированного (линейного) - если без разрывов
       }
     }
     const sqlStr = client.prepareQuery(query, useIds); // Эта функция должна сформировать запрос с учетом ids
