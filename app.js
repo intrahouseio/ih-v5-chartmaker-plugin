@@ -92,8 +92,13 @@ module.exports = async function(plugin) {
   async function getRes(mes) {
     // Подготовить запрос или запрос уже готов
     const query = mes.sql || { ...mes.filter };
-    if (query.end2) query.end = query.end2;
-    query.ids = mes.ids;
+    if (typeof query == 'object') {
+      if (query.end2) query.end = query.end2;
+      query.ids = mes.ids;
+      if (mes.process_type == 'afun' || mes.chart_type == 'chartpie') {
+        query.notnul = true; // Может также быть для неагрегированного (линейного) - если без разрывов
+      }
+    }
     const sqlStr = client.prepareQuery(query, useIds); // Эта функция должна сформировать запрос с учетом ids
     plugin.log('SQL: ' + sqlStr);
 
