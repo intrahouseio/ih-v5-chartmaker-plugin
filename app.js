@@ -95,10 +95,11 @@ module.exports = async function(plugin) {
     if (typeof query == 'object') {
       if (query.end2) query.end = query.end2;
       query.ids = mes.ids;
-      if (mes.process_type == 'afun' || mes.chart_type == 'chartpie') {
+      if (mes.process_type == 'afun' || mes.chart_type == 'chartpie' || mes.chart_type ==  'chartcolumns') {
         query.notnull = true; // Может также быть для неагрегированного (линейного) - если без разрывов
       }
     }
+
     const sqlStr = client.prepareQuery(query, useIds); // Эта функция должна сформировать запрос с учетом ids
     plugin.log('SQL: ' + sqlStr);
 
@@ -120,48 +121,8 @@ module.exports = async function(plugin) {
     // chart_type
     if (mes.process_type == 'afun') return rollup(arr, mes);
     if (mes.chart_type == 'chartpie') return piedata(arr, mes);
+    if (mes.content == 'csv') return {records:arr};
     return trends(arr, mes);
-  }
-
-  async function getRes2(mes) {
-    if (mes.sql) return getRes(mes);
-    let memUsage = process.memoryUsage();
-    plugin.log('getRes2 started memUsage = ' + util.inspect(memUsage));
-
-    let { start, end, end2, dn_prop } = mes.filter;
-    if (end2) end = end2;
-    const delta = Math.round((end - start) / 50);
-
-    const sqlStrArr = [];
-    let cur = start;
-    for (let i = 0; i < 50; i++) {
-      sqlStrArr[i] = client.prepareQuery({ dn_prop, start: cur, end: cur + delta - 1 });
-      plugin.log('SQL: ' + sqlStrArr[i]);
-      cur += delta;
-    }
-
-    const promises = sqlStrArr.map((sqlStr, idx) => queryOne(sqlStr, idx));
-    const results = await Promise.all(promises);
-    memUsage = process.memoryUsage();
-    plugin.log('results.len ' + results.length + ' memUsage = ' + util.inspect(memUsage));
-
-    let arr = [];
-    let i = 0;
-    // for (let i=0; i<results.length; i++) {
-    for (let j = 0; j < results[i].length; j++) {
-      arr.push(results[i][j]);
-    }
-    // }
-    plugin.log('Total arr.len ' + arr.length);
-    // результат преобразовать
-    // return mes.process_type == 'afun' ? rollup(arr, mes) : trends(arr, mes);
-    // chart_type
-    if (mes.process_type == 'afun') return rollup(arr, mes);
-    if (mes.chart_type == 'chartpie') return piedata(arr, mes);
-    const farr = trends(arr, mes);
-    memUsage = process.memoryUsage();
-    plugin.log('farr.len ' + farr.length + ' memUsage = ' + util.inspect(memUsage));
-    return farr;
   }
 
   async function queryOne(qstr, idx) {
