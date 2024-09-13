@@ -121,7 +121,7 @@ module.exports = async function(plugin) {
     // chart_type
     if (mes.process_type == 'afun') return rollup(arr, mes);
     if (mes.chart_type == 'chartpie') return piedata(arr, mes);
-    if (mes.content == 'csv') return {records:arr};
+    // if (mes.content == 'csv') return {records:arr};
     return trends(arr, mes);
   }
 
