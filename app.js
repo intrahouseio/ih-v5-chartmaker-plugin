@@ -70,7 +70,9 @@ module.exports = async function(plugin) {
       }
       if (!res.formats) res.formats = mes.formats || {};
       if (!res.scales && mes.scales) res.scales = mes.scales;
+
       if (mes.now) res.now = mes.now;
+      res.scalestacked = mes.scalestacked || 0;
 
       respObj.payload = res;
       respObj.response = 1;
