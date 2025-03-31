@@ -49,17 +49,24 @@ module.exports = async function(plugin) {
         unrequire(filename);
         let txt = '';
         try {
-          // txt = 'Start\n filter =  ' + util.inspect(mes.filter) + '\n local=  ' + util.inspect(mes.local);
           txt = 'Start';
           debug(txt);
           res = await require(filename)(mes, client, plugin.apimanager, debug);
           txt = 'Stop\n result =  ' + util.inspect(res);
           debug(txt);
+          if (!res) throw { err: 'NORESULT', message: 'No result from script!' };
+          if (res.err) throw { err: res.err, message: res.err };
         } catch (e) {
-          txt = 'Script error: ' + util.inspect(e);
-          plugin.log(txt);
-          debug(txt);
-          throw { message: 'Script error: ' + util.inspect(e) };
+          let errmsg;
+          if (e.err) {
+            errmsg = e.message || e.err;
+          } else {
+            errmsg = 'Script error: ' + util.inspect(e);
+          }
+          plugin.log(errmsg);
+          debug(errmsg);
+
+          throw { message: errmsg };
         }
       } else {
         res = await getRes(mes);
@@ -97,13 +104,13 @@ module.exports = async function(plugin) {
     if (typeof query == 'object') {
       if (query.end2) query.end = query.end2;
       query.ids = mes.ids;
-      if (mes.process_type == 'afun' || mes.chart_type == 'chartpie' || mes.chart_type ==  'chartcolumns') {
+      if (mes.process_type == 'afun' || mes.chart_type == 'chartpie' || mes.chart_type == 'chartcolumns') {
         query.notnull = true; // Может также быть для неагрегированного (линейного) - если без разрывов
       }
     }
 
     const sqlStr = client.prepareQuery(query, useIds); // Эта функция должна сформировать запрос с учетом ids
-    plugin.log('SQL: ' + sqlStr);
+    plugin.log('SQL: ' + sqlStr, 1);
 
     // Выполнить запрос
     let arr = [];
@@ -116,7 +123,7 @@ module.exports = async function(plugin) {
       }
     }
 
-    plugin.log('Points: ' + arr.length);
+    plugin.log('Points: ' + arr.length, 1);
 
     // результат преобразовать
     // return mes.process_type == 'afun' ? rollup(arr, mes) : trends(arr, mes);
@@ -153,9 +160,7 @@ module.exports = async function(plugin) {
         }
       });
     } catch (e) {
-      plugin.log(
-        'Remap error for query.ids=' + query.ids + ' query.dn_prop=' + query.dn_prop + ' : ' + util.inspect(e)
-      );
+      plugin.log('Remap error for query.ids=' + query.ids + ' query.dn_prop=' + query.dn_prop + ' : ' + util.inspect(e));
     }
     return arr;
   }
