@@ -74,13 +74,14 @@ module.exports = async function(plugin) {
           res.stacked = mes.stacked || 0;
           res.autoskip = mes.autoskip || 0;
         }
+        if (!res.scales && mes.scales) res.scales = mes.scales;
+
+        res.scalestacked = mes.scalestacked || 0;
+
       }
-      if (!res.formats) res.formats = mes.formats || {};
-      if (!res.scales && mes.scales) res.scales = mes.scales;
-
+      if (!res.formats) res.formats = mes.formats || {};   
       if (mes.now) res.now = mes.now;
-      res.scalestacked = mes.scalestacked || 0;
-
+      
       respObj.payload = res;
       respObj.response = 1;
     } catch (e) {
