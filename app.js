@@ -77,11 +77,10 @@ module.exports = async function(plugin) {
         if (!res.scales && mes.scales) res.scales = mes.scales;
 
         res.scalestacked = mes.scalestacked || 0;
-
       }
-      if (!res.formats) res.formats = mes.formats || {};   
+      if (!res.formats) res.formats = mes.formats || {};
       if (mes.now) res.now = mes.now;
-      
+
       respObj.payload = res;
       respObj.response = 1;
     } catch (e) {
@@ -110,29 +109,79 @@ module.exports = async function(plugin) {
       }
     }
 
-    const sqlStr = client.prepareQuery(query, useIds); // Эта функция должна сформировать запрос с учетом ids
-    plugin.log('SQL: ' + sqlStr, 1);
-
-    // Выполнить запрос
     let arr = [];
-    if (sqlStr) {
-      arr = await client.query(sqlStr);
+    try {
+      arr = await queryPointsFromDB(query);
+      if (arr.length == 0) {
+        // Нет ни одной записи - получить последнюю точку и вернуть ее в момент старт
+        arr = await queryOverpastPointFromDB(query);
+      } else {
+        plugin.log('Records: ' + arr.length);
+      }
 
       // Выполнить обратный маппинг id => dn, prop
       if (useIds) {
         arr = remap(arr, query);
       }
+    } catch (e) {
+      plugin.log('ERROR: ' +e && e.message ? e.message : util.inspect(e));
+      arr = [];
     }
 
-    plugin.log('Points: ' + arr.length, 1);
+    /*
+    const sqlStr = client.prepareQuery(query, useIds); // Эта функция должна сформировать запрос с учетом ids
+    plugin.log('SQL: ' + sqlStr);
+
+    // Выполнить запрос
+    let arr = [];
+ 
+      if (sqlStr) {
+        arr = await client.query(sqlStr);
+        // Выполнить обратный маппинг id => dn, prop
+        if (useIds) {
+          arr = remap(arr, query);
+        }
+      }
+      */
 
     // результат преобразовать
-    // return mes.process_type == 'afun' ? rollup(arr, mes) : trends(arr, mes);
-    // chart_type
     if (mes.process_type == 'afun') return rollup(arr, mes);
     if (mes.chart_type == 'chartpie') return piedata(arr, mes);
-    // if (mes.content == 'csv') return {records:arr};
     return trends(arr, mes);
+  }
+
+  async function queryPointsFromDB(query) {
+    const sqlStr = client.prepareQuery(query, useIds); // Эта функция должна сформировать запрос с учетом ids
+    plugin.log('queryPointsFromDB SQL: ' + sqlStr);
+    if (!sqlStr) throw { message: 'prepareQuery for query: ' + util.inspect(query) + ' is empty' };
+
+    try {
+      return client.query(sqlStr);
+    } catch (e) {
+      throw { message: 'Query rejected for SQL: ' + sqlStr };
+    }
+  }
+
+  async function queryOverpastPointFromDB(query) {
+    const q1 = { ...query, start: 0, end: query.start };
+    let sqlStr = client.prepareQuery(q1, useIds); // Эта функция должна сформировать запрос с учетом ids
+    if (!sqlStr) throw { message: 'prepareQuery OverpastPoint query: ' + util.inspect(q1) + ' is empty' };
+
+    sqlStr += ' LIMIT 1';
+    plugin.log('getLastPoint: ' + sqlStr);
+    try {
+      const one = await client.query(sqlStr);
+      if (!one.length) {
+        plugin.log('Not found last point');
+        return [];
+      }
+
+      plugin.log('Found last point: ' + util.inspect(one));
+      one[0].ts = query.start;
+      return one;
+    } catch (e) {
+      throw { message: 'Query rejected for SQL: ' + sqlStr };
+    }
   }
 
   async function queryOne(qstr, idx) {
