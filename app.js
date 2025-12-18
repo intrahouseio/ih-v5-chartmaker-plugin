@@ -112,9 +112,10 @@ module.exports = async function(plugin) {
     let arr = [];
     try {
       arr = await queryPointsFromDB(query);
-      if (arr.length == 0) {
+      if (arr.length == 0 ) {
         // Нет ни одной записи - получить последнюю точку и вернуть ее в момент старт
-        arr = await queryOverpastPointFromDB(query);
+        // arr = await queryOverpastPointFromDB(query);
+        // Временно скрыть этот функционал, так как в чанках работает некорректно
       } else {
         plugin.log('Records: ' + arr.length);
       }
