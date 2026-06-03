@@ -1,6 +1,7 @@
 /**
  *  utils.js
  */
+
 // const util = require('util');
 
 /**
@@ -84,13 +85,13 @@ function getQueryStr(query, dnarr) {
   const to = query.end;
   let res =
     query.table == 'timeline'
-     ? `select * from timeline ${formWhereQuery(dnarr, from, to, 'start', 'end')} order by start`
-     //  ? `select * from timeline order by start`
-      : `select * from records ${formWhereQuery(dnarr, from, to)} order by ts`;
+      ? `select * from timeline ${formWhereQuery(dnarr, from, to, 'start', 'end')} order by start`
+      : //  ? `select * from timeline order by start`
+        `select * from records ${formWhereQuery(dnarr, from, to, 'ts', 'ts', query.notnull)} order by ts`;
   return res;
 }
 
-function formWhereQuery(dnarr, from, to, ts_start_name = 'ts', ts_end_name = 'ts') {
+function formWhereQuery(dnarr, from, to, ts_start_name = 'ts', ts_end_name = 'ts', notnull) {
   let query = '';
   let first = true;
 
@@ -115,6 +116,10 @@ function formWhereQuery(dnarr, from, to, ts_start_name = 'ts', ts_end_name = 'ts
 
   if (to) {
     query += isFirst(' AND ') + ' ' + ts_end_name + ' <= ' + to;
+  }
+
+  if (notnull) {
+    query += isFirst(' AND ') + ' ' + ' val is NOT NULL';
   }
 
   return query ? ' WHERE ' + query : '';

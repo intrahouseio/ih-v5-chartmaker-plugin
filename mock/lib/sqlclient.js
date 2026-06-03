@@ -31,8 +31,6 @@ class Sqlclient {
       const dnarr = queryObj.dn_prop.split(',');
       queryStr = utils.getQueryStr(queryObj, dnarr);
     }
-
-    // console.log('SQLClient Query: ' + queryStr);
     return queryStr;
   }
 

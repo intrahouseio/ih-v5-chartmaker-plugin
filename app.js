@@ -5,9 +5,11 @@
 const util = require('util');
 const fs = require('fs');
 
-const trends = require('./lib/trends');
+const linedata = require('./lib/linedata');
 const rollup = require('./lib/rollup2');
 const piedata = require('./lib/piedata');
+
+
 
 module.exports = async function(plugin) {
   const { agentName, agentPath, customFolder, jbaseFolder, useIds, ...opt } = plugin.params.data;
@@ -57,15 +59,9 @@ module.exports = async function(plugin) {
           if (!res) throw { err: 'NORESULT', message: 'No result from script!' };
           if (res.err) throw { err: res.err, message: res.err };
         } catch (e) {
-          let errmsg;
-          if (e.err) {
-            errmsg = e.message || e.err;
-          } else {
-            errmsg = 'Script error: ' + util.inspect(e);
-          }
+          const errmsg = e && e.err ? (e.message || e.err) : 'Script error: ' + util.inspect(e);
           plugin.log(errmsg);
           debug(errmsg);
-
           throw { message: errmsg };
         }
       } else {
@@ -75,12 +71,11 @@ module.exports = async function(plugin) {
           res.autoskip = mes.autoskip || 0;
         }
         if (!res.scales && mes.scales) res.scales = mes.scales;
-
         res.scalestacked = mes.scalestacked || 0;
       }
+
       if (!res.formats) res.formats = mes.formats || {};
       if (mes.now) res.now = mes.now;
-
       respObj.payload = res;
       respObj.response = 1;
     } catch (e) {
@@ -98,6 +93,16 @@ module.exports = async function(plugin) {
     }
   }
 
+  function unrequire(moduleName) {
+    if (!moduleName) return;
+    try {
+      const fullPath = require.resolve(moduleName);
+      delete require.cache[fullPath];
+    } catch (e) {
+      // Может и не быть
+    }
+  }
+
   async function getRes(mes) {
     // Подготовить запрос или запрос уже готов
     const query = mes.sql || { ...mes.filter };
@@ -112,45 +117,22 @@ module.exports = async function(plugin) {
     let arr = [];
     try {
       arr = await queryPointsFromDB(query);
-      if (arr.length == 0 ) {
-        // Нет ни одной записи - получить последнюю точку и вернуть ее в момент старт
-        // arr = await queryOverpastPointFromDB(query);
-        // Временно скрыть этот функционал, так как в чанках работает некорректно
-      } else {
-        plugin.log('Records: ' + arr.length);
-      }
+      plugin.log('Records: ' + arr.length, 1);
 
       // Выполнить обратный маппинг id => dn, prop
-      if (useIds) {
-        arr = remap(arr, query);
-      }
+      if (useIds) arr = remap(arr, query);
     } catch (e) {
-      plugin.log('ERROR: ' +e && e.message ? e.message : util.inspect(e));
+      plugin.log('ERROR: ' + e && e.message ? e.message : util.inspect(e));
       arr = [];
     }
-
-    /*
-    const sqlStr = client.prepareQuery(query, useIds); // Эта функция должна сформировать запрос с учетом ids
-    plugin.log('SQL: ' + sqlStr);
-
-    // Выполнить запрос
-    let arr = [];
- 
-      if (sqlStr) {
-        arr = await client.query(sqlStr);
-        // Выполнить обратный маппинг id => dn, prop
-        if (useIds) {
-          arr = remap(arr, query);
-        }
-      }
-      */
 
     // результат преобразовать
     if (mes.process_type == 'afun') return rollup(arr, mes);
     if (mes.chart_type == 'chartpie') return piedata(arr, mes);
-    return trends(arr, mes);
+    // return trends(arr, mes, query);
+    return linedata(arr, mes, query, useIds, client, plugin);
   }
-
+ 
   async function queryPointsFromDB(query) {
     const sqlStr = client.prepareQuery(query, useIds); // Эта функция должна сформировать запрос с учетом ids
     plugin.log('queryPointsFromDB SQL: ' + sqlStr);
@@ -163,34 +145,7 @@ module.exports = async function(plugin) {
     }
   }
 
-  async function queryOverpastPointFromDB(query) {
-    const q1 = { ...query, start: 0, end: query.start };
-    let sqlStr = client.prepareQuery(q1, useIds); // Эта функция должна сформировать запрос с учетом ids
-    if (!sqlStr) throw { message: 'prepareQuery OverpastPoint query: ' + util.inspect(q1) + ' is empty' };
-
-    sqlStr += ' LIMIT 1';
-    plugin.log('getLastPoint: ' + sqlStr);
-    try {
-      const one = await client.query(sqlStr);
-      if (!one.length) {
-        plugin.log('Not found last point');
-        return [];
-      }
-
-      plugin.log('Found last point: ' + util.inspect(one));
-      one[0].ts = query.start;
-      return one;
-    } catch (e) {
-      throw { message: 'Query rejected for SQL: ' + sqlStr };
-    }
-  }
-
-  async function queryOne(qstr, idx) {
-    const xres = await client.query(qstr);
-    plugin.log(idx + ' queryOne LEN=' + xres.length);
-    return idx ? [] : xres;
-  }
-
+ 
   function remap(arr, query) {
     if (!query.ids || !query.dn_prop) return arr;
 
@@ -215,19 +170,10 @@ module.exports = async function(plugin) {
     }
     return arr;
   }
-};
-
-function unrequire(moduleName) {
-  if (!moduleName) return;
-  try {
-    const fullPath = require.resolve(moduleName);
-    delete require.cache[fullPath];
-  } catch (e) {
-    // Может и не быть
-  }
 }
 
-/**
+
+/*
  * mes={
   start: 1648587600000,
   end: 1648715915518,
@@ -259,4 +205,4 @@ function unrequire(moduleName) {
   type: 'command'
 }
 
- */
+*/
