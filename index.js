@@ -3,7 +3,6 @@ const util = require('util');
 
 const app = require('./app');
 
-console.log('Chartmaker plugin has started.');
 
 (async () => {
   let plugin;
@@ -12,7 +11,6 @@ console.log('Chartmaker plugin has started.');
     const pluginapi = opt && opt.pluginapi ? opt.pluginapi : 'ih-plugin-api';
 
     plugin = require(pluginapi)();
-    // console.log('Chartmaker plugin has started.');
     plugin.log('Chartmaker plugin has started.', 0);
 
     // if (!plugin.params.agentPath) throw { message: 'No agentPath!' };
@@ -23,7 +21,6 @@ console.log('Chartmaker plugin has started.');
 
     app(plugin);
   } catch (e) {
-    console.log('ERROR: ' + util.inspect(e));
     plugin.log('ERROR: ' + util.inspect(e));
     setTimeout(() => {
       plugin.exit(1);

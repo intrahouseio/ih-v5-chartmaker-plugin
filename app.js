@@ -79,11 +79,11 @@ module.exports = async function(plugin) {
       respObj.payload = res;
       respObj.response = 1;
     } catch (e) {
-      console.log('ERROR: ' + util.inspect(e));
+      // console.log('ERROR: ' + util.inspect(e));
       respObj.error = e;
       respObj.response = 0;
     }
-    plugin.log('SEND RESPONSE ' + util.inspect(respObj), 1);
+    // plugin.log('SEND RESPONSE ' + util.inspect(respObj), 1);
     plugin.send(respObj);
     respObj = '';
 
@@ -135,7 +135,7 @@ module.exports = async function(plugin) {
  
   async function queryPointsFromDB(query) {
     const sqlStr = client.prepareQuery(query, useIds); // Эта функция должна сформировать запрос с учетом ids
-    plugin.log('queryPointsFromDB SQL: ' + sqlStr);
+    // plugin.log('queryPointsFromDB SQL: ' + sqlStr);
     if (!sqlStr) throw { message: 'prepareQuery for query: ' + util.inspect(query) + ' is empty' };
 
     try {
@@ -166,7 +166,7 @@ module.exports = async function(plugin) {
         }
       });
     } catch (e) {
-      plugin.log('Remap error for query.ids=' + query.ids + ' query.dn_prop=' + query.dn_prop + ' : ' + util.inspect(e));
+      plugin.log('ERROR: Remap for query.ids=' + query.ids + ' query.dn_prop=' + query.dn_prop + ' : ' + util.inspect(e));
     }
     return arr;
   }
