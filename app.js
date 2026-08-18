@@ -105,15 +105,20 @@ module.exports = async function(plugin) {
 
   async function getRes(mes) {
     // Подготовить запрос или запрос уже готов
+    // plugin.log('getRes: mes='+util.inspect(mes))
     const query = mes.sql || { ...mes.filter };
     if (typeof query == 'object') {
       if (query.end2) query.end = query.end2;
       query.ids = mes.ids;
-      if (mes.process_type == 'afun' || mes.chart_type == 'chartpie' || mes.chart_type == 'chartcolumns') {
+      if (mes.process_type == 'afun' || mes.process_type == 'cafun' || mes.chart_type == 'chartpie' || mes.chart_type == 'chartcolumns') {
         query.notnull = true; // Может также быть для неагрегированного (линейного) - если без разрывов
       }
+      if (mes.process_type == 'cafun') {
+        query.catable = mes.catable;
+        query.cafield = mes.cafield;
+      }
     }
-
+    // plugin.log('getRes: query='+util.inspect(query))
     let arr = [];
     try {
       arr = await queryPointsFromDB(query);
